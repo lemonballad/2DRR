@@ -8,20 +8,33 @@
 
 ## Technology Stack
 
-- **Primary Language**: MATLAB 2016
-- **Dependencies**: MATLAB Standard Library only (no external toolboxes required)
-- **Build System**: None - scripts run directly in MATLAB
+### MATLAB (Original)
+- **Language**: MATLAB 2016
+- **Dependencies**: MATLAB Standard Library only
+
+### Python (Transpiled)
+- **Language**: Python 3.10+
+- **Dependencies**: numpy, scipy, matplotlib
+- **Package**: `tdrr` (Two-Dimensional Resonant Raman)
+- **Install**: `pip install -e python/`
 
 ## Code Structure
 
+### MATLAB
 ```
 matlab/
 ├── sub_task_1/    # Data reading and preprocessing
-│                  # Reads Gaussian output files, extracts frequencies, force constants
 ├── sub_task_2/    # Force analysis and visualization
-│                  # GROMACS MD trajectories, force vectors, energy plots
 └── sub_task_3/    # Main spectroscopic analysis
-                   # 2D spectral plots, mode mapping, trajectory generation
+```
+
+### Python
+```
+python/src/tdrr/
+├── core/          # Spectral analysis (apodfun, lag_window, bispectrum)
+├── io/            # File I/O (gaussian, pdb, gromacs)
+├── analysis/      # Mode mapping, trajectory analysis
+└── plotting/      # Visualization
 ```
 
 ## Key File Formats
@@ -73,17 +86,22 @@ molecule_name='MBO';
 
 ## Important Notes
 
-- **Windows paths**: Scripts contain hardcoded Windows paths that need updating
-- **No tests**: No unit test framework exists
-- **Research code**: Contains debug code, iterations, and commented alternatives
-- **Data-heavy**: sub_task_2 and sub_task_3 contain large data files (~77MB and ~72MB)
+- **Windows paths**: MATLAB scripts contain hardcoded Windows paths
+- **Python package**: Clean, typed, documented code with tests
+- **Fail-fast**: Python code has no try/except - errors propagate immediately
+- **Data-heavy**: sub_task_2 and sub_task_3 contain large data files
 
 ## Key Files
 
+### MATLAB
 - `/matlab/sub_task_1/GauData.m` - Core data class definition
-- `/matlab/sub_task_3/PROCESSOR.m` - Main processing pipeline
-- `/matlab/sub_task_3/SD2DPlots.m` - 2D spectral plot generation
-- `/matlab/sub_task_3/export_fig.m` - External utility for figure export
+- `/matlab/sub_task_3/apodfun.m` - Apodization window function
+- `/matlab/sub_task_3/bisp3cum.m` - Bispectrum calculation
+
+### Python
+- `/python/src/tdrr/core/spectral.py` - Core spectral functions
+- `/python/src/tdrr/io/gaussian.py` - Gaussian file I/O
+- `/python/src/tdrr/analysis/trajectory.py` - Trajectory analysis
 
 ## Domain Knowledge
 
