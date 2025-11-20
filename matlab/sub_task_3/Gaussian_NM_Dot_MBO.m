@@ -27,16 +27,3 @@ for il=1:72
         Tr_vm_candidates(il,ir,:)=Tr_vm(il,ir,:)>0.7*Tr_vm_max;
     end
 end
-
-if false
-    bleepbleep=Tr_vm./Tr_v;bleepbleep(bleepbleep>1)=0;
-    figure;
-    for il=1:72
-        subplot(2,2,1);contourf(abs(permute(Tr_v(il,:,:),[2 3 1])),20,'edgecolor','none');
-        subplot(2,2,2);contourf((permute(frequencies(43:49,il,:),[3 1 2])),20,'edgecolor','none');
-        subplot(2,2,3);contourf(abs(permute(Tr_vm(il,:,:),[2 3 1])),20,'edgecolor','none');
-        subplot(2,2,4);contourf(abs(permute(bleepbleep(il,:,:).*Tr_v_candidates(il,:,:),[2 3 1])),20,'edgecolor','none');colorbar;
-        title(num2str(il));
-        pause
-    end
-end

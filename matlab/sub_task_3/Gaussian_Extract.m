@@ -113,8 +113,6 @@ for suffix=-90:5:90 % Loop over files to read
     red_mass_R_mat=[red_mass_R_mat;red_mass];
 end % Loop over files to read
 
-% f_out=fopen(file_dest_data,'w+');
-%     fprintf(fout_L,'%s',file_contents_current_L);
 fclose('all');
 
 rd_angle_L_MBO=rd_angle_L;
@@ -126,15 +124,3 @@ rd_angle_R_MBO=rd_angle_R;
 freq_R_MBO_mat=freq_R_mat;
 force_cnst_R_MBO_mat=force_cnst_R_mat;
 red_mass_R_MBO_mat=red_mass_R_mat;
-
-if 0
-freq_MBO_axis=repmat(freq_L_mat(find(rd_angle_L_MBO==0))',size(freq_L_mat,1),1);
-
-force_cnst_L_mat(~isfinite(force_cnst_L_mat))=NaN;
-Good_indices=~isnan(force_cnst_L_mat);
-
-FC_L_MBO=griddata(freq_L_mat(Good_indices),...
-                            rd_angle_L_MBO(Good_indices),...
-                            force_cnst_L_mat(Good_indices),...
-                            freq_MBO_axis,rd_angle_L_MBO);
-end
