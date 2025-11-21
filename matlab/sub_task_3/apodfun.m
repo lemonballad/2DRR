@@ -1,36 +1,51 @@
-function [apod] = apodfun(x,x0,gL,gH,wid,invert)
-%Generates an asymmetric curve (bandpass filter) decaying on each side with a flat top
+function [apod] = apodfun(x, x0, gL, gH, wid, invert)
+%APODFUN Generate asymmetric bandpass or notch filter
 %
-%if invert=1, function will invert to be a notch filter instead of a
-%bandpass filter
+%   [APOD] = APODFUN(X, X0, GL, GH, WID, INVERT) generates an apodization
+%   window with Gaussian decay on each side and a flat top region.
 %
-%x: A row or column vector, the domain of the function.
-%x0: The desired center of the function.
-%gL: The decay on the low side of the function.
-%gH: The decay on the high side of the function.
-%wid: The TOTAL width of the function's flat top, such that the distance
-%from x0 to the portion of decay is (wid/2).
+%   Inputs:
+%       x      - Domain vector (frequencies or time points)
+%       x0     - Center position of the filter
+%       gL     - Gaussian decay width on the low side
+%       gH     - Gaussian decay width on the high side
+%       wid    - Total width of the flat top region
+%       invert - If true (1), create notch filter; if false (0), bandpass
 %
+%   Outputs:
+%       apod   - Apodization window array (same size as x)
 %
-locent=x0-(wid/2);
-hicent=x0+(wid/2);
-apod(length(x))=0;
-fu(length(x))=0;
+%   Example:
+%       x = linspace(0, 100, 1000);
+%       window = apodfun(x, 50, 10, 10, 20, false);
+%       plot(x, window);
+%
+%   See also: lagwind, bisp3cum
 
-for kk=1:length(x)
-  if x(kk)<locent %REGION 1
-    fu(kk)=exp(-0.5*(x(kk)-locent)^2/gL^2);
-  elseif x(kk)>hicent %REGION 3
-    fu(kk)=exp(-0.5*(x(kk)-hicent)^2/gH^2);
-  else %REGION 2
-      fu(kk)=1;
-  end
-end
+% Calculate flat top boundaries
+locent = x0 - (wid / 2);
+hicent = x0 + (wid / 2);
 
-if invert==1
-    apod=1-fu;
+% Vectorized computation
+fu = zeros(size(x));
+
+% Region 1: below low center - Gaussian decay
+mask_low = x < locent;
+fu(mask_low) = exp(-0.5 * (x(mask_low) - locent).^2 / gL^2);
+
+% Region 2: flat top
+mask_flat = (x >= locent) & (x <= hicent);
+fu(mask_flat) = 1;
+
+% Region 3: above high center - Gaussian decay
+mask_high = x > hicent;
+fu(mask_high) = exp(-0.5 * (x(mask_high) - hicent).^2 / gH^2);
+
+% Apply inversion if requested
+if invert
+    apod = 1 - fu;
 else
-    apod=fu;
+    apod = fu;
 end
 
-return;
+end
