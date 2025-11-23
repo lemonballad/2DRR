@@ -181,3 +181,119 @@ def fit_exponential_decay(
             model, time, correlation, p0=[0.5, -10.0, 0.5, -1.0], maxfev=5000
         )
         return {"a": popt[0], "b": popt[1], "c": popt[2], "d": popt[3]}
+
+
+def compute_vibrational_coupling(
+    frequency_trajectory: NDArray[np.float64],
+    dt: float = 0.004,
+    hbar: float = 5308.0,
+) -> float:
+    """Compute vibrational coupling constant from frequency trajectory.
+
+    Uses the Kubo formula to compute the vibrational coupling constant
+    from the frequency-frequency correlation function.
+
+    Args:
+        frequency_trajectory: Time series of instantaneous frequencies.
+        dt: Time step in picoseconds.
+        hbar: Reduced Planck constant in cm^-1 * ps.
+
+    Returns:
+        Vibrational coupling constant k in fs^-1.
+
+    Notes:
+        The coupling constant is related to the vibrational dephasing time
+        through T2* = 1/k.
+    """
+    # Center the trajectory
+    centered = frequency_trajectory - np.mean(frequency_trajectory)
+
+    # Compute autocorrelation
+    n = len(centered)
+    corr = np.correlate(centered, centered, mode="full")
+    corr = corr[n - 1 :] / n
+
+    # Normalize by hbar^2 and integrate
+    k_vc = np.trapezoid(corr, dx=dt) / hbar ** 2
+
+    return float(k_vc)
+
+
+def compute_2d_spectral_density(
+    correlation_2d: NDArray[np.float64],
+    dt: float,
+    apod_decay: float = 60.0,
+    n_fft: int | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Compute 2D spectral density from 2D correlation function.
+
+    Applies apodization and 2D FFT to generate the 2D spectrum.
+
+    Args:
+        correlation_2d: 2D correlation function (n x n).
+        dt: Time step in picoseconds.
+        apod_decay: Apodization decay parameter.
+        n_fft: FFT size (default: next power of 2).
+
+    Returns:
+        Tuple of (frequencies in cm^-1, 2D spectral density).
+    """
+    n = correlation_2d.shape[0]
+    time = np.arange(n) * dt
+
+    # Generate 2D apodization
+    apod_1d = apodfun(time, 0, 0, apod_decay, apod_decay, invert=False)
+    apod_2d = np.outer(apod_1d, apod_1d)
+
+    # Apply apodization
+    apodized = correlation_2d * apod_2d
+
+    # Compute 2D FFT
+    if n_fft is None:
+        n_fft = 2 ** (int(np.ceil(np.log2(n))) + 2)
+
+    spectrum = np.real(np.fft.fftshift(np.fft.fft2(apodized, (n_fft, n_fft))))
+
+    # Compute frequency axis
+    c_cm_ps = 0.00003  # speed of light in cm/ps
+    freq = np.fft.fftshift(np.fft.fftfreq(n_fft, dt)) * 2 * np.pi / c_cm_ps
+
+    return freq, spectrum
+
+
+def process_multiple_trajectories(
+    trajectories: list[NDArray[np.float64]],
+    dt: float,
+    apod_decay: float = 60.0,
+    n_fft: int | None = None,
+) -> tuple[NDArray[np.float64], list[NDArray[np.float64]]]:
+    """Process multiple frequency trajectories to spectral densities.
+
+    Computes autocorrelation, applies apodization, and transforms
+    to frequency domain for each trajectory.
+
+    Args:
+        trajectories: List of frequency time series.
+        dt: Time step in picoseconds.
+        apod_decay: Apodization decay parameter.
+        n_fft: FFT size.
+
+    Returns:
+        Tuple of (frequencies, list of spectral densities).
+    """
+    spectra = []
+    freq = None
+
+    for traj in trajectories:
+        # Compute correlation
+        corr = compute_correlation(traj, normalize=True)
+
+        # Compute spectral density
+        f, spec = compute_spectral_density(corr, dt, apod_decay, n_fft)
+
+        if freq is None:
+            freq = f
+
+        spectra.append(spec)
+
+    return freq, spectra
