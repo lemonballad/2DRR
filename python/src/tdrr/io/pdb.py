@@ -176,3 +176,95 @@ def write_b_factors(
         lines.append(line)
 
     output_path.write_text("\n".join(lines) + "\n")
+
+
+def write_pdb_trajectory(
+    pdb_data: PDBData,
+    coordinates: NDArray[np.float64],
+    b_factors: NDArray[np.float64],
+    output_path: str | Path,
+) -> None:
+    """Write multi-model PDB trajectory with coordinates and B-factors.
+
+    Args:
+        pdb_data: Template PDB data structure.
+        coordinates: Array of shape (n_frames, n_atoms, 3) with coordinates.
+        b_factors: Array of shape (n_frames, n_atoms) with B-factors.
+        output_path: Path for output PDB file.
+    """
+    output_path = Path(output_path)
+    n_frames = coordinates.shape[0]
+    n_atoms = len(pdb_data.record_name)
+
+    lines: list[str] = []
+
+    for frame in range(n_frames):
+        # MODEL record
+        lines.append(f"MODEL     {frame + 1:4d}")
+
+        for i in range(n_atoms):
+            line = (
+                f"{pdb_data.record_name[i]:<6}"
+                f"{pdb_data.atom_num[i]:5d} "
+                f"{pdb_data.atom_name[i]:4s}"
+                f"{pdb_data.alt_loc[i]:1s}"
+                f"{pdb_data.res_name[i]:3s} "
+                f"{pdb_data.chain_id[i]:1s}"
+                f"{pdb_data.res_num[i]:4d}    "
+                f"{coordinates[frame, i, 0]:8.3f}"
+                f"{coordinates[frame, i, 1]:8.3f}"
+                f"{coordinates[frame, i, 2]:8.3f}"
+                f"{b_factors[frame, i]:6.2f}"
+                f"{b_factors[frame, i]:6.2f}"
+            )
+            if pdb_data.element[i]:
+                line += f"          {pdb_data.element[i]:>2s}"
+            lines.append(line)
+
+        # ENDMDL record
+        lines.append("ENDMDL")
+
+    output_path.write_text("\n".join(lines) + "\n")
+
+
+def generate_displaced_pdb_trajectory(
+    pdb_data: PDBData,
+    atom_indices: list[int],
+    normal: NDArray[np.float64],
+    displacements: NDArray[np.float64],
+    force_values: NDArray[np.float64] | None = None,
+    output_path: str | Path = "trajectory.pdb",
+) -> None:
+    """Generate PDB trajectory with atoms displaced along a normal vector.
+
+    Args:
+        pdb_data: Template PDB data.
+        atom_indices: List of 0-based atom indices to displace.
+        normal: Normal vector for displacement direction.
+        displacements: Array of displacement values.
+        force_values: Optional force values as B-factors (n_frames, n_atoms).
+        output_path: Path for output PDB file.
+    """
+    n_frames = len(displacements)
+    n_atoms = len(pdb_data.record_name)
+
+    # Normalize the normal vector
+    normal = np.asarray(normal, dtype=np.float64)
+    normal = normal / np.linalg.norm(normal)
+
+    # Build coordinate array
+    base_coords = np.column_stack([pdb_data.x, pdb_data.y, pdb_data.z])
+    coordinates = np.zeros((n_frames, n_atoms, 3), dtype=np.float64)
+
+    for frame in range(n_frames):
+        coordinates[frame] = base_coords.copy()
+        for idx in atom_indices:
+            coordinates[frame, idx] += displacements[frame] * normal
+
+    # Build B-factor array
+    if force_values is None:
+        b_factors = np.zeros((n_frames, n_atoms), dtype=np.float64)
+    else:
+        b_factors = force_values
+
+    write_pdb_trajectory(pdb_data, coordinates, b_factors, output_path)
